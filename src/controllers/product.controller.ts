@@ -58,6 +58,30 @@ class ProductController {
     })
 
   }
+
+  async update(request: Request, response: Response): Promise<Response>{
+    const productRepository = AppDataSource.getRepository(Product)
+
+    const id: string = request.params.id
+    const { name , weight, description } = request.body
+
+    try {
+      let product = await productRepository.findOneByOrFail({ id })
+      product.name = name
+      product.description = description
+      product.weight = weight
+
+      const productDb = await productRepository.save(product)
+
+      return response.status(200).send({
+        data: productDb
+      })
+    } catch (error) {
+      return response.status(404).send({
+        error: 'Product Not Found'
+      })
+    }
+  }
 }
 
 export default new ProductController
