@@ -3,6 +3,7 @@ import AppDataSource from '../connection'
 import { Product } from '../entities/product.entity'
 import { Repository } from 'typeorm'
 import { error } from 'console'
+import { validate } from 'class-validator'
 
 
 class ProductController {
@@ -30,6 +31,13 @@ class ProductController {
     product.name = name
     product.weight= weight
     product.description = description
+
+    const errors = await validate(product)
+    if (errors.length> 0) {
+      return response.status(422).send({
+        errors
+      })
+    }
 
     const productRepository = AppDataSource.getRepository(Product)
 
@@ -65,20 +73,50 @@ class ProductController {
     const id: string = request.params.id
     const { name , weight, description } = request.body
 
-    try {
-      let product = await productRepository.findOneByOrFail({ id })
-      product.name = name
-      product.description = description
-      product.weight = weight
+    let product
 
+    try {
+      product = await productRepository.findOneByOrFail({ id })
+    } catch (error) {
+      return response.status(404).send({
+        error: 'Product Not Found'
+      })
+    }
+
+    product.name = name
+    product.description = description
+    product.weight = weight
+
+    const errors = await validate(product)
+    if (errors.length> 0) {
+      return response.status(422).send({
+        errors
+      })
+    }
+
+    try {
       const productDb = await productRepository.save(product)
 
       return response.status(200).send({
         data: productDb
       })
     } catch (error) {
-      return response.status(404).send({
-        error: 'Product Not Found'
+      return response.status(500).send({
+        error: 'Internal error'
+      })
+    }
+  }
+
+  async delete(request: Request, response: Response): Promise<Response> {
+    const id: string = request.params.id
+    const productRepository = AppDataSource.getRepository(Product)
+    try {
+      await productRepository.delete(id)
+
+      return response.status(204).send({})
+    } catch (error) {
+      return response.status(400).send({
+        error: 'Error deleting'
       })
     }
   }
